@@ -1,4 +1,4 @@
-# Import the dependencies.
+# Imports dependencies.
 from flask import Flask, jsonify
 
 import numpy as np
@@ -18,13 +18,13 @@ from sqlalchemy import create_engine, func
 engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 
 # Reflects an existing database into a new model.
-Base = automap_base()
+base = automap_base()
 # Reflect the tables.
-Base.prepare(autoload_with=engine)
+base.prepare(autoload_with=engine)
 
 # Saves references to each table.
-Measurement = Base.classes.measurement
-Station = Base.classes.station
+measurement = base.classes.measurement
+station = base.classes.station
 
 # Creates session (link) from Python to the DB.
 session = Session(engine)
@@ -54,12 +54,12 @@ def homepage():
         f"/api/v1.0/yyyy-mm-dd/yyyy-mm-dd"
     )
 
-# Precipitation route. #
+# Precipitation route. 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
 
     # Finds the most recent date in the data set.
-    latest_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
+    latest_date = session.query(measurement.date).order_by(measurement.date.desc()).first()[0]
 
     # Converts latest_date string to a date format.
     latest_date = datetime.strptime(latest_date, "%Y-%m-%d")
@@ -76,13 +76,13 @@ def precipitation():
     one_year_prior = latest_date - dt.timedelta(days=365)
 
     # The below query retrieves the last 12 months of precipitation data.
-    sel = [Measurement.date,
-           Measurement.prcp]
+    sel = [measurement.date,
+           measurement.prcp]
 
     latest_year_prcp = session.query(*sel).\
-                       filter(Measurement.date >= one_year_prior).\
-                       filter(Measurement.date <= latest_date).\
-                       order_by(Measurement.date).all()
+                       filter(measurement.date >= one_year_prior).\
+                       filter(measurement.date <= latest_date).\
+                       order_by(measurement.date).all()
     
     # Creates a dictionary from the row data and appends to a list of annual_precipitation.
     annual_precipitation = []
@@ -103,7 +103,7 @@ def stations():
     session = Session(engine)
 
     # Returns a list of all stations. 
-    stations = session.query(Station.station).all()
+    stations = session.query(station.station).all()
 
     session.close()
 
@@ -121,16 +121,16 @@ def tobs():
 
     # Query which finds the most active stations (i.e. which stations have the most rows).
     # Stations and their counts are listed in descending order.
-    station_activity = session.query(Measurement.station, func.count(Measurement.station)).\
-                    group_by(Measurement.station).\
-                    order_by(func.count(Measurement.station).desc()).all()
+    station_activity = session.query(measurement.station, func.count(measurement.station)).\
+                    group_by(measurement.station).\
+                    order_by(func.count(measurement.station).desc()).all()
     
     most_active_station = station_activity[0][0]
 
     # Finds the most recent date in the data set when filtered only to the most active station.
-    active_latest_date = session.query(Measurement.date).\
-                                filter(Measurement.station == most_active_station).\
-                                order_by(Measurement.date.desc()).first()[0]
+    active_latest_date = session.query(measurement.date).\
+                                filter(measurement.station == most_active_station).\
+                                order_by(measurement.date.desc()).first()[0]
     
     # Converts active_latest_date string to a date format.
     active_latest_date = datetime.strptime(active_latest_date, "%Y-%m-%d")
@@ -148,11 +148,11 @@ def tobs():
 
     # Queries the last 12 months of temperature observation data for the most active station.
 
-    active_latest_year_tobs = session.query(Measurement.tobs).\
-                   filter(Measurement.station == most_active_station).\
-                   filter(Measurement.date >= active_one_year_prior).\
-                   filter(Measurement.date <= active_latest_date).\
-                   order_by(Measurement.date).all()
+    active_latest_year_tobs = session.query(measurement.tobs).\
+                   filter(measurement.station == most_active_station).\
+                   filter(measurement.date >= active_one_year_prior).\
+                   filter(measurement.date <= active_latest_date).\
+                   order_by(measurement.date).all()
 
     
         
@@ -173,21 +173,21 @@ def start_date(start):
     #Creates a session (link) from Python to DB. 
     session = Session(engine)
 
-    earliest_date = session.query(Measurement.date).order_by(Measurement.date).first()[0]
-    latest_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
+    earliest_date = session.query(measurement.date).order_by(measurement.date).first()[0]
+    latest_date = session.query(measurement.date).order_by(measurement.date.desc()).first()[0]
 
     if start >= earliest_date and start <= latest_date:
 
         # The below queries will returns the minimum, average, and maximum tobs of all dates after the start date specified. 
     
-        sel = [func.min(Measurement.tobs),
-            func.avg(Measurement.tobs),
-            func.max(Measurement.tobs)]
+        sel = [func.min(measurement.tobs),
+            func.avg(measurement.tobs),
+            func.max(measurement.tobs)]
         
 
         tobs_after_start = session.query(*sel).\
-                        filter(Measurement.date >= start).\
-                        order_by(Measurement.date).all()
+                        filter(measurement.date >= start).\
+                        order_by(measurement.date).all()
     
     
         # Creates a dictionary from the row data and appends to a list of after_start_tobs_summary.
@@ -219,22 +219,22 @@ def start_end_dates(start, end):
     #Creates a session (link) from Python to DB. 
     session = Session(engine)
 
-    earliest_date = session.query(Measurement.date).order_by(Measurement.date).first()[0]
-    latest_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
+    earliest_date = session.query(measurement.date).order_by(measurement.date).first()[0]
+    latest_date = session.query(measurement.date).order_by(measurement.date.desc()).first()[0]
 
     if start >= earliest_date and start <= latest_date and end >= earliest_date and end <= latest_date:
 
         # The below queries will returns the minimum, average, and maximum tobs of all dates on the start and end dates specified. 
     
-        sel = [func.min(Measurement.tobs),
-            func.avg(Measurement.tobs),
-            func.max(Measurement.tobs)]
+        sel = [func.min(measurement.tobs),
+            func.avg(measurement.tobs),
+            func.max(measurement.tobs)]
         
 
         between_date_tobs = session.query(*sel).\
-                        filter(Measurement.date >= start).\
-                        filter(Measurement.date <= end).\
-                        order_by(Measurement.date).all()
+                        filter(measurement.date >= start).\
+                        filter(measurement.date <= end).\
+                        order_by(measurement.date).all()
     
     
         # Creates a dictionary from the row data and appends to a list of between_dates_tobs_summmary.
