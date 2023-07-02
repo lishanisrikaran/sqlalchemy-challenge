@@ -110,5 +110,56 @@ def stations():
     return jsonify(all_stations)
 
 
+# Tobs route. 
+@app.route("/api/v1.0/tobs")
+def tobs():
+    #Creates a session (link) from Python to DB. 
+    session = Session(engine)
+
+    # Query which finds the most active stations (i.e. which stations have the most rows).
+    # Stations and their counts are listed in descending order.
+    station_activity = session.query(Measurement.station, func.count(Measurement.station)).\
+                    group_by(Measurement.station).\
+                    order_by(func.count(Measurement.station).desc()).all()
+    
+    most_active_station = station_activity[0][0]
+
+    # Finds the most recent date in the data set when filtered only to the most active station.
+    active_latest_date = session.query(Measurement.date).\
+                                filter(Measurement.station == most_active_station).\
+                                order_by(Measurement.date.desc()).first()[0]
+    
+    # Converts active_latest_date string to a date format.
+    active_latest_date = datetime.strptime(active_latest_date, "%Y-%m-%d")
+
+    # Extracts the year, month, and day from active_latest_date.
+    active_latest_year = active_latest_date.year
+    active_latest__month = active_latest_date.month
+    active_latest_day = active_latest_date.day
+
+    # The most recent data point in the database when filtered to the most active station (in ISO format). 
+    active_latest_date = dt.date(active_latest_year, active_latest__month ,active_latest_day)
+
+    # Calculates the date one year from active_latest_date.
+    active_one_year_prior = active_latest_date - dt.timedelta(days=365)
+
+    # Queries the last 12 months of temperature observation data for the most active station.
+
+    active_latest_year_tobs = session.query(Measurement.tobs).\
+                   filter(Measurement.station == most_active_station).\
+                   filter(Measurement.date >= active_one_year_prior).\
+                   filter(Measurement.date <= active_latest_date).\
+                   order_by(Measurement.date).all()
+
+    
+
+    session.close()
+
+    #Convert list of tuples into normal list.
+    active_annual_tobs = list(np.ravel(active_latest_year_tobs))
+
+    return jsonify(active_annual_tobs)
+
+
 if __name__ == '__main__':
     app.run(debug=True)
