@@ -49,7 +49,9 @@ def homepage():
         f"Available Routes:<br/>"
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
-        f"/api/v1.0/tobs"
+        f"/api/v1.0/tobs<br/>"
+        f"/api/v1.0/yyyy-mm-dd<br/>"
+        f"/api/v1.0/<start>/<end>"
     )
 
 # Precipitation route. #
@@ -92,6 +94,7 @@ def precipitation():
     return jsonify(annual_precipitation)
     
     session.close()
+
 
 # Station route.
 @app.route("/api/v1.0/stations")
@@ -152,13 +155,55 @@ def tobs():
                    order_by(Measurement.date).all()
 
     
-
+        
     session.close()
 
     #Convert list of tuples into normal list.
     active_annual_tobs = list(np.ravel(active_latest_year_tobs))
 
     return jsonify(active_annual_tobs)
+
+# Start Route. 
+@app.route("/api/v1.0/<start>")
+def start_date(start):
+    
+    canonicalized = start.replace(" ", "")
+    canonicalized = start.replace(".", "-")
+    
+    #Creates a session (link) from Python to DB. 
+    session = Session(engine)
+
+    earliest_date = session.query(Measurement.date).order_by(Measurement.date).first()[0]
+    latest_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
+
+    if start >= earliest_date and start <= latest_date:
+
+        # The below queries will returns the minimum, average, and maximum tobs of all dates after the start date specified. 
+    
+        sel = [func.min(Measurement.tobs),
+            func.avg(Measurement.tobs),
+            func.max(Measurement.tobs)]
+        
+
+        tobs_after_start = session.query(*sel).\
+                        filter(Measurement.date >= start).\
+                        order_by(Measurement.date).all()
+    
+    
+        # Creates a dictionary from the row data and appends to a list of after_start_tobs_summary.
+        after_start_tobs_summary = []
+        for min, avg, max in tobs_after_start:
+            tobs_after_start_dict = {}
+            tobs_after_start_dict["TMIN"] = min
+            tobs_after_start_dict["TAVG"] = avg
+            tobs_after_start_dict["TMAX"] = max
+            after_start_tobs_summary.append(tobs_after_start_dict)
+
+        return jsonify(after_start_tobs_summary)
+
+    else:
+        return "Error: The input date was not within the data range, please try another date."
+
 
 
 if __name__ == '__main__':
