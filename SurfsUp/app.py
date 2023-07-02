@@ -50,8 +50,8 @@ def homepage():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/yyyy-mm-dd<br/>"
-        f"/api/v1.0/<start>/<end>"
+        f"/api/v1.0/yyyy-mm-dd <br/>"
+        f"/api/v1.0/yyyy-mm-dd/yyyy-mm-dd"
     )
 
 # Precipitation route. #
@@ -203,6 +203,55 @@ def start_date(start):
 
     else:
         return "Error: The input date was not within the data range, please try another date."
+    
+    session.close()
+
+
+# Start-End Route. 
+@app.route("/api/v1.0/<start>/<end>")
+def start_end_dates(start, end):
+    
+    canonicalized = start.replace(" ", "")
+    canonicalized = start.replace(".", "-")
+    canonicalized = end.replace(" ", "")
+    canonicalized = end.replace(".", "-")
+    
+    #Creates a session (link) from Python to DB. 
+    session = Session(engine)
+
+    earliest_date = session.query(Measurement.date).order_by(Measurement.date).first()[0]
+    latest_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
+
+    if start >= earliest_date and start <= latest_date and end >= earliest_date and end <= latest_date:
+
+        # The below queries will returns the minimum, average, and maximum tobs of all dates on the start and end dates specified. 
+    
+        sel = [func.min(Measurement.tobs),
+            func.avg(Measurement.tobs),
+            func.max(Measurement.tobs)]
+        
+
+        between_date_tobs = session.query(*sel).\
+                        filter(Measurement.date >= start).\
+                        filter(Measurement.date <= end).\
+                        order_by(Measurement.date).all()
+    
+    
+        # Creates a dictionary from the row data and appends to a list of between_dates_tobs_summmary.
+        between_dates_tobs_summmary = []
+        for min, avg, max in between_date_tobs:
+            tobs_between_dates_dict = {}
+            tobs_between_dates_dict["TMIN"] = min
+            tobs_between_dates_dict["TAVG"] = avg
+            tobs_between_dates_dict["TMAX"] = max
+            between_dates_tobs_summmary.append(tobs_between_dates_dict)
+
+        return jsonify(between_dates_tobs_summmary)
+
+    else:
+        return "Error: Either both, or one of the start date and end dates input were not within the data range, please try again with a revised date."
+    
+    session.close()
 
 
 
